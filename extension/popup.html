@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>スクリーンショットツール</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <!-- Initial screen -->
+  <div id="screen-initial" class="screen active">
+    <div class="header">
+      <div class="logo">📷</div>
+      <h1>スクリーンショットツール</h1>
+      <p class="subtitle">仮想ブラウザ内で完結</p>
+    </div>
+
+    <div class="capture-buttons">
+      <button id="btn-capture-tab" class="btn btn-primary">
+        <span class="btn-icon">🖥️</span>
+        <span class="btn-text">
+          <strong>現在のタブを撮影</strong>
+          <small>表示中のページ全体</small>
+        </span>
+      </button>
+      <button id="btn-capture-area" class="btn btn-secondary">
+        <span class="btn-icon">✂️</span>
+        <span class="btn-text">
+          <strong>範囲を選択して撮影</strong>
+          <small>ドラッグで範囲指定</small>
+        </span>
+      </button>
+    </div>
+
+    <div class="history-section" id="history-section">
+      <div class="history-header">
+        <span>📋 最近の履歴</span>
+        <button id="btn-clear-history" class="btn-link">すべて削除</button>
+      </div>
+      <div id="history-list" class="history-list"></div>
+    </div>
+
+    <div class="shortcut-hint">
+      キーボードショートカット: <kbd>Ctrl+Shift+S</kbd>
+    </div>
+  </div>
+
+  <!-- Loading screen -->
+  <div id="screen-loading" class="screen">
+    <div class="loading-content">
+      <div class="spinner"></div>
+      <p>撮影中...</p>
+    </div>
+  </div>
+
+  <!-- Editor screen -->
+  <div id="screen-editor" class="screen">
+    <div class="editor-toolbar">
+      <div class="tool-group">
+        <button class="tool-btn active" data-tool="pointer" title="選択">☝️</button>
+        <button class="tool-btn" data-tool="pen" title="ペン">✏️</button>
+        <button class="tool-btn" data-tool="arrow" title="矢印">➡️</button>
+        <button class="tool-btn" data-tool="rect" title="四角形">⬜</button>
+        <button class="tool-btn" data-tool="text" title="テキスト">T</button>
+        <button class="tool-btn" data-tool="blur" title="ぼかし">🔲</button>
+      </div>
+      <div class="tool-group">
+        <input type="color" id="color-picker" value="#FF0000" title="色">
+        <select id="stroke-size" title="サイズ">
+          <option value="2">細</option>
+          <option value="4" selected>普通</option>
+          <option value="8">太</option>
+          <option value="16">極太</option>
+        </select>
+      </div>
+      <div class="tool-group">
+        <button class="tool-btn" id="btn-undo" title="元に戻す">↩️</button>
+        <button class="tool-btn" id="btn-redo" title="やり直し">↪️</button>
+      </div>
+    </div>
+
+    <div class="canvas-container">
+      <canvas id="screenshot-canvas"></canvas>
+      <canvas id="annotation-canvas"></canvas>
+      <div id="text-input-overlay" class="hidden">
+        <textarea id="text-input" placeholder="テキストを入力..."></textarea>
+      </div>
+    </div>
+
+    <div class="editor-actions">
+      <button id="btn-back" class="btn btn-ghost">← 戻る</button>
+      <div class="action-buttons">
+        <button id="btn-copy-clipboard" class="btn btn-success">
+          📋 クリップボードにコピー
+        </button>
+        <button id="btn-copy-link" class="btn btn-primary">
+          🔗 リンクを作成
+        </button>
+        <button id="btn-download" class="btn btn-secondary">
+          💾 保存
+        </button>
+      </div>
+    </div>
+
+    <div id="copy-feedback" class="feedback hidden">
+      ✅ クリップボードにコピーしました！Teams・メールに貼り付けできます
+    </div>
+  </div>
+
+  <!-- Area selection overlay (injected into page) -->
+  <div id="screen-share" class="screen">
+    <div class="share-content">
+      <h2>📤 共有</h2>
+      <div class="share-preview">
+        <img id="share-preview-img" src="" alt="プレビュー">
+      </div>
+      <div class="share-options">
+        <button id="btn-share-clipboard" class="btn btn-success btn-large">
+          📋 クリップボードにコピー
+          <small>Teams・Outlook等に貼り付け可能</small>
+        </button>
+        <div class="share-link-section">
+          <input type="text" id="share-link-input" readonly placeholder="リンクを生成中...">
+          <button id="btn-copy-link-share" class="btn btn-primary">コピー</button>
+        </div>
+        <button id="btn-share-back" class="btn btn-ghost">← 編集に戻る</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

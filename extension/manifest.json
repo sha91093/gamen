@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "仮想ブラウザ スクリーンショットツール",
+  "version": "1.0.0",
+  "description": "Citrix仮想ブラウザ内でスクリーンショットを撮影・注釈・共有できるツール",
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "clipboardWrite",
+    "storage"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "スクリーンショットを撮る"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+S",
+        "mac": "Command+Shift+S"
+      },
+      "description": "スクリーンショットツールを開く"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

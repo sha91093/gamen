@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>仮想ブラウザ スクリーンショットツール</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0f0f1a;
+      --surface: #1a1a2e;
+      --surface2: #16213e;
+      --border: #2d2d44;
+      --accent: #4361ee;
+      --accent2: #7209b7;
+      --success: #2d9e60;
+      --text: #e0e0e0;
+      --muted: #6c757d;
+    }
+
+    body {
+      font-family: 'Segoe UI', 'Meiryo', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    header {
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .header-brand .icon { font-size: 24px; }
+    .header-badge {
+      font-size: 11px;
+      background: var(--accent);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 20px;
+    }
+    .header-actions { display: flex; gap: 8px; }
+
+    /* Screens */
+    .screen { display: none; flex: 1; }
+    .screen.active { display: flex; }
+
+    /* ============ HOME SCREEN ============ */
+    #screen-home {
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      gap: 32px;
+    }
+    .hero {
+      text-align: center;
+      max-width: 500px;
+    }
+    .hero h1 {
+      font-size: 28px;
+      color: #fff;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #4361ee, #7209b7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero p {
+      font-size: 15px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .capture-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      max-width: 600px;
+      width: 100%;
+    }
+    @media (max-width: 480px) {
+      .capture-grid { grid-template-columns: 1fr; }
+    }
+
+    .capture-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      text-align: center;
+    }
+    .capture-card:hover {
+      border-color: var(--accent);
+      background: #1e1e38;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(67, 97, 238, 0.2);
+    }
+    .capture-card .card-icon { font-size: 40px; }
+    .capture-card h3 { font-size: 15px; color: #fff; }
+    .capture-card p { font-size: 12px; color: var(--muted); line-height: 1.4; }
+    .capture-card.full-span { grid-column: 1 / -1; flex-direction: row; padding: 16px 24px; text-align: left; gap: 16px; }
+    .capture-card.full-span .card-icon { font-size: 32px; flex-shrink: 0; }
+
+    .features {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 600px;
+    }
+    .feature {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .feature .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    /* ============ EDITOR SCREEN ============ */
+    #screen-editor {
+      flex-direction: column;
+    }
+
+    .toolbar {
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      flex-shrink: 0;
+    }
+    .tool-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding-right: 12px;
+      border-right: 1px solid var(--border);
+    }
+    .tool-group:last-child { border-right: none; }
+    .tool-btn {
+      width: 34px;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      color: var(--muted);
+      transition: all 0.15s;
+      position: relative;
+    }
+    .tool-btn:hover, .tool-btn.active {
+      background: var(--surface);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .tool-btn[title]:hover::after {
+      content: attr(title);
+      position: absolute;
+      bottom: -28px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.85);
+      color: #fff;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    #color-picker {
+      width: 34px;
+      height: 34px;
+      padding: 3px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface);
+      cursor: pointer;
+    }
+    #stroke-size {
+      height: 34px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 0 8px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .editor-body {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .canvas-area {
+      flex: 1;
+      overflow: auto;
+      background: #080812;
+      position: relative;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-start;
+      padding: 16px;
+    }
+
+    .canvas-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+
+    #screenshot-canvas,
+    #annotation-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    #annotation-canvas {
+      cursor: crosshair;
+    }
+    #screenshot-canvas {
+      display: block;
+    }
+
+    #text-overlay {
+      position: absolute;
+      display: none;
+      z-index: 10;
+    }
+    #text-input {
+      background: rgba(255, 255, 0, 0.9);
+      border: 2px solid #FF0000;
+      border-radius: 3px;
+      padding: 4px 8px;
+      font-size: 16px;
+      color: #000;
+      min-width: 120px;
+      min-height: 32px;
+      resize: both;
+      font-family: sans-serif;
+    }
+
+    .editor-sidebar {
+      width: 240px;
+      background: var(--surface2);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+    .sidebar-section {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-section h4 {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+    }
+
+    .action-btn {
+      width: 100%;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .action-btn:last-child { margin-bottom: 0; }
+    .action-btn:hover { transform: translateX(2px); }
+    .action-btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+    .action-btn-primary:hover { background: #3451d1; }
+    .action-btn-success {
+      background: var(--success);
+      color: white;
+    }
+    .action-btn-success:hover { background: #238a52; }
+    .action-btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .action-btn-secondary:hover { background: var(--border); }
+    .action-btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .action-btn-ghost:hover { color: var(--text); background: var(--surface); }
+
+    .copy-success {
+      padding: 10px 12px;
+      background: #1a3a2a;
+      border: 1px solid #2d5a3d;
+      border-radius: 8px;
+      color: #4ade80;
+      font-size: 12px;
+      line-height: 1.4;
+      display: none;
+    }
+    .copy-success.show { display: block; }
+
+    .history-thumbs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .thumb {
+      width: 56px;
+      height: 36px;
+      border-radius: 4px;
+      overflow: hidden;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: border-color 0.15s;
+    }
+    .thumb:hover { border-color: var(--accent); }
+    .thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .no-history { font-size: 12px; color: var(--muted); }
+
+    /* Area selection overlay */
+    #area-selector-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 9999;
+      cursor: crosshair;
+      display: none;
+    }
+    #area-selector-overlay.active { display: block; }
+    .overlay-bg {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+    }
+    #selection-box {
+      position: absolute;
+      border: 2px solid var(--accent);
+      background: rgba(67, 97, 238, 0.1);
+      display: none;
+    }
+    .overlay-hint {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 18px;
+      text-shadow: 0 2px 6px rgba(0,0,0,0.9);
+      pointer-events: none;
+      text-align: center;
+      line-height: 1.6;
+    }
+    .overlay-hint kbd {
+      background: rgba(255,255,255,0.2);
+      border-radius: 4px;
+      padding: 2px 8px;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #1a3a2a;
+      border: 1px solid #2d5a3d;
+      color: #4ade80;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: transform 0.3s;
+      z-index: 10000;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-brand">
+      <span class="icon">📷</span>
+      仮想ブラウザ スクリーンショットツール
+      <span class="header-badge">ブラウザ内完結</span>
+    </div>
+  </header>
+
+  <!-- Home Screen -->
+  <div id="screen-home" class="screen active">
+    <div class="hero">
+      <h1>仮想ブラウザ内で完結する<br>スクリーンショット共有</h1>
+      <p>Citrix環境でもSnipping Toolは不要。<br>撮影・注釈・クリップボードコピーまでブラウザ内で完結。<br>TeamsやOutlookウェブ版に直接貼り付けできます。</p>
+    </div>
+
+    <div class="capture-grid">
+      <div class="capture-card" id="card-tab">
+        <div class="card-icon">🖥️</div>
+        <h3>現在のタブを撮影</h3>
+        <p>このページ全体のスクリーンショットを撮影します</p>
+      </div>
+      <div class="capture-card" id="card-area">
+        <div class="card-icon">✂️</div>
+        <h3>範囲を選択して撮影</h3>
+        <p>ドラッグして任意の範囲を指定して撮影します</p>
+      </div>
+      <div class="capture-card full-span" id="card-screen">
+        <div class="card-icon">🖱️</div>
+        <div>
+          <h3>画面全体を撮影（Screen Capture API）</h3>
+          <p>ブラウザ外のウィンドウも含めた画面全体を撮影できます。許可が必要です。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="features">
+      <div class="feature"><div class="dot"></div>注釈・矢印・テキスト追加</div>
+      <div class="feature"><div class="dot"></div>ぼかし（個人情報保護）</div>
+      <div class="feature"><div class="dot"></div>クリップボードにコピー</div>
+      <div class="feature"><div class="dot"></div>Teams/Outlookに貼り付け</div>
+      <div class="feature"><div class="dot"></div>履歴保存（ブラウザ内）</div>
+    </div>
+
+    <!-- History -->
+    <div id="home-history" style="max-width:600px;width:100%;padding:0 20px">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+        <span>📋 最近の履歴</span>
+        <button onclick="clearHistory()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px">すべて削除</button>
+      </div>
+      <div id="home-history-list" class="history-thumbs"></div>
+    </div>
+  </div>
+
+  <!-- Editor Screen -->
+  <div id="screen-editor" class="screen">
+    <div class="toolbar">
+      <div class="tool-group">
+        <button class="tool-btn active" data-tool="pointer" title="選択ツール">☝️</button>
+        <button class="tool-btn" data-tool="pen" title="ペンで描く">✏️</button>
+        <button class="tool-btn" data-tool="arrow" title="矢印を引く">➡️</button>
+        <button class="tool-btn" data-tool="rect" title="四角形を描く">⬜</button>
+        <button class="tool-btn" data-tool="highlight" title="ハイライト">🖊️</button>
+        <button class="tool-btn" data-tool="text" title="テキストを追加">T</button>
+        <button class="tool-btn" data-tool="blur" title="ぼかし（個人情報保護）">🔲</button>
+      </div>
+      <div class="tool-group">
+        <input type="color" id="color-picker" value="#FF0000" title="色を選択">
+        <select id="stroke-size" title="サイズ">
+          <option value="2">細</option>
+          <option value="4" selected>普通</option>
+          <option value="8">太</option>
+          <option value="16">極太</option>
+        </select>
+      </div>
+      <div class="tool-group">
+        <button class="tool-btn" id="btn-undo" title="元に戻す (Ctrl+Z)">↩️</button>
+        <button class="tool-btn" id="btn-redo" title="やり直し (Ctrl+Y)">↪️</button>
+        <button class="tool-btn" id="btn-clear-annotations" title="注釈をすべて消す">🗑️</button>
+      </div>
+      <div class="tool-group" style="margin-left:auto;border:none">
+        <button class="tool-btn" id="btn-home" title="ホームに戻る">🏠</button>
+      </div>
+    </div>
+
+    <div class="editor-body">
+      <div class="canvas-area" id="canvas-area">
+        <div class="canvas-wrapper" id="canvas-wrapper">
+          <canvas id="screenshot-canvas"></canvas>
+          <canvas id="annotation-canvas"></canvas>
+          <div id="text-overlay">
+            <textarea id="text-input" placeholder="テキストを入力..." rows="2"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="editor-sidebar">
+        <div class="sidebar-section">
+          <h4>共有・コピー</h4>
+          <button class="action-btn action-btn-success" id="btn-copy-clip">
+            📋 クリップボードにコピー
+          </button>
+          <button class="action-btn action-btn-primary" id="btn-download">
+            💾 ファイルに保存
+          </button>
+          <div class="copy-success" id="copy-success">
+            ✅ コピー完了！<br>
+            Teams・Outlook・Slackなどに<br>直接貼り付けできます。
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <h4>撮り直し</h4>
+          <button class="action-btn action-btn-ghost" id="btn-recapture-tab">🖥️ タブ再撮影</button>
+          <button class="action-btn action-btn-ghost" id="btn-recapture-area">✂️ 範囲再選択</button>
+        </div>
+
+        <div class="sidebar-section" style="flex:1;overflow-y:auto">
+          <h4>履歴</h4>
+          <div id="sidebar-history-list" class="history-thumbs"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Area Selector Overlay -->
+  <div id="area-selector-overlay">
+    <div class="overlay-bg"></div>
+    <div id="selection-box"></div>
+    <div class="overlay-hint">
+      ドラッグして範囲を選択<br>
+      <kbd>Esc</kbd> でキャンセル
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+  'use strict';
+
+  // ─── State ───────────────────────────────────────────────
+  const state = {
+    tool: 'pointer',
+    color: '#FF0000',
+    strokeSize: 4,
+    drawing: false,
+    sx: 0, sy: 0,
+    undoStack: [],
+    redoStack: [],
+    textPos: null,
+    currentDataUrl: null,
+  };
+
+  // ─── DOM ─────────────────────────────────────────────────
+  const $ = id => document.getElementById(id);
+  const scCanvas = $('screenshot-canvas');
+  const anCanvas = $('annotation-canvas');
+  const scCtx = scCanvas.getContext('2d');
+  const anCtx = anCanvas.getContext('2d');
+
+  // ─── Screen navigation ───────────────────────────────────
+  function showScreen(name) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    $('screen-' + name).classList.add('active');
+  }
+
+  // ─── Toast ───────────────────────────────────────────────
+  function showToast(msg, duration = 3000) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), duration);
+  }
+
+  // ─── History ─────────────────────────────────────────────
+  function getHistory() {
+    try { return JSON.parse(localStorage.getItem('ss_history') || '[]'); } catch { return []; }
+  }
+  function addHistory(dataUrl) {
+    const h = getHistory();
+    h.unshift({ id: Date.now(), dataUrl, ts: new Date().toLocaleString('ja-JP') });
+    localStorage.setItem('ss_history', JSON.stringify(h.slice(0, 12)));
+    renderAllHistory();
+  }
+  function clearHistory() {
+    localStorage.removeItem('ss_history');
+    renderAllHistory();
+  }
+  function renderThumbList(containerId) {
+    const el = $(containerId);
+    const h = getHistory();
+    if (!h.length) { el.innerHTML = '<div class="no-history">まだありません</div>'; return; }
+    el.innerHTML = h.map(e =>
+      `<div class="thumb" title="${e.ts}" data-id="${e.id}">
+         <img src="${e.dataUrl}" alt="screenshot">
+       </div>`
+    ).join('');
+    el.querySelectorAll('.thumb').forEach(t => {
+      t.addEventListener('click', () => {
+        const found = getHistory().find(e => e.id === +t.dataset.id);
+        if (found) openEditor(found.dataUrl);
+      });
+    });
+  }
+  function renderAllHistory() {
+    renderThumbList('home-history-list');
+    renderThumbList('sidebar-history-list');
+  }
+
+  // ─── html2canvas-like: capture using canvas drawing ──────
+  async function captureTabViaCanvas() {
+    // Use html2canvas if available, else inform user to use Screen Capture
+    if (typeof html2canvas !== 'undefined') {
+      const canvas = await html2canvas(document.body, { useCORS: true, allowTaint: true, scale: 1 });
+      return canvas.toDataURL('image/png');
+    }
+    return null;
+  }
+
+  // ─── Screen Capture API ──────────────────────────────────
+  async function captureScreen() {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { cursor: 'always' },
+        preferCurrentTab: true,
+      });
+      const track = stream.getVideoTracks()[0];
+      const settings = track.getSettings();
+      const w = settings.width || window.screen.width;
+      const h = settings.height || window.screen.height;
+
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      await new Promise(res => { video.onloadedmetadata = res; });
+      video.play();
+      await new Promise(res => setTimeout(res, 100));
+
+      const tmpCanvas = document.createElement('canvas');
+      tmpCanvas.width = w;
+      tmpCanvas.height = h;
+      tmpCanvas.getContext('2d').drawImage(video, 0, 0, w, h);
+
+      stream.getTracks().forEach(t => t.stop());
+      return tmpCanvas.toDataURL('image/png');
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        showToast('⚠️ 画面キャプチャが許可されませんでした');
+      }
+      return null;
+    }
+  }
+
+  // ─── Area selection ──────────────────────────────────────
+  let areaResolve = null;
+  function startAreaSelection(fullDataUrl) {
+    return new Promise(resolve => {
+      areaResolve = resolve;
+      const overlay = $('area-selector-overlay');
+      const selBox = $('selection-box');
+      const hint = overlay.querySelector('.overlay-hint');
+      overlay.classList.add('active');
+      hint.style.display = 'block';
+      selBox.style.display = 'none';
+
+      let sx, sy, drawing = false;
+
+      function onMouseDown(e) {
+        drawing = true;
+        sx = e.clientX; sy = e.clientY;
+        hint.style.display = 'none';
+        selBox.style.display = 'block';
+        selBox.style.left = sx + 'px';
+        selBox.style.top = sy + 'px';
+        selBox.style.width = '0';
+        selBox.style.height = '0';
+      }
+      function onMouseMove(e) {
+        if (!drawing) return;
+        const x = Math.min(e.clientX, sx);
+        const y = Math.min(e.clientY, sy);
+        const w = Math.abs(e.clientX - sx);
+        const h = Math.abs(e.clientY - sy);
+        Object.assign(selBox.style, { left: x+'px', top: y+'px', width: w+'px', height: h+'px' });
+      }
+      function onMouseUp(e) {
+        if (!drawing) return;
+        drawing = false;
+        cleanup();
+
+        const x = Math.min(e.clientX, sx);
+        const y = Math.min(e.clientY, sy);
+        const w = Math.abs(e.clientX - sx);
+        const h = Math.abs(e.clientY - sy);
+
+        if (w < 10 || h < 10) { resolve(null); return; }
+
+        const dpr = window.devicePixelRatio || 1;
+        const img = new Image();
+        img.onload = () => {
+          const scaleX = img.naturalWidth / window.innerWidth;
+          const scaleY = img.naturalHeight / window.innerHeight;
+          const tmp = document.createElement('canvas');
+          tmp.width = w * scaleX;
+          tmp.height = h * scaleY;
+          tmp.getContext('2d').drawImage(
+            img,
+            x * scaleX, y * scaleY, w * scaleX, h * scaleY,
+            0, 0, tmp.width, tmp.height
+          );
+          resolve(tmp.toDataURL('image/png'));
+        };
+        img.src = fullDataUrl;
+      }
+      function onKeyDown(e) {
+        if (e.key === 'Escape') { cleanup(); resolve(null); }
+      }
+      function cleanup() {
+        overlay.classList.remove('active');
+        overlay.removeEventListener('mousedown', onMouseDown);
+        overlay.removeEventListener('mousemove', onMouseMove);
+        overlay.removeEventListener('mouseup', onMouseUp);
+        document.removeEventListener('keydown', onKeyDown);
+        areaResolve = null;
+      }
+
+      overlay.addEventListener('mousedown', onMouseDown);
+      overlay.addEventListener('mousemove', onMouseMove);
+      overlay.addEventListener('mouseup', onMouseUp);
+      document.addEventListener('keydown', onKeyDown);
+    });
+  }
+
+  // ─── Open editor ─────────────────────────────────────────
+  function openEditor(dataUrl) {
+    state.currentDataUrl = dataUrl;
+    state.undoStack = [];
+    state.redoStack = [];
+
+    const img = new Image();
+    img.onload = () => {
+      const maxW = window.innerWidth - 260;
+      const maxH = window.innerHeight - 100;
+      let w = img.naturalWidth, h = img.naturalHeight;
+      const scale = Math.min(maxW / w, maxH / h, 1);
+      w = Math.round(w * scale);
+      h = Math.round(h * scale);
+
+      for (const c of [scCanvas, anCanvas]) {
+        c.width = w; c.height = h;
+        c.style.width = w + 'px';
+        c.style.height = h + 'px';
+      }
+      $('canvas-wrapper').style.width = w + 'px';
+      $('canvas-wrapper').style.height = h + 'px';
+
+      scCtx.drawImage(img, 0, 0, w, h);
+      anCtx.clearRect(0, 0, w, h);
+
+      $('copy-success').classList.remove('show');
+      showScreen('editor');
+      renderAllHistory();
+    };
+    img.src = dataUrl;
+  }
+
+  // ─── Canvas helpers ──────────────────────────────────────
+  function getPos(e) {
+    const rect = anCanvas.getBoundingClientRect();
+    return {
+      x: (e.clientX - rect.left) * (anCanvas.width / rect.width),
+      y: (e.clientY - rect.top) * (anCanvas.height / rect.height),
+    };
+  }
+  function saveUndo() {
+    state.undoStack.push(anCtx.getImageData(0, 0, anCanvas.width, anCanvas.height));
+    state.redoStack = [];
+  }
+  function undo() {
+    if (!state.undoStack.length) return;
+    state.redoStack.push(anCtx.getImageData(0, 0, anCanvas.width, anCanvas.height));
+    anCtx.putImageData(state.undoStack.pop(), 0, 0);
+  }
+  function redo() {
+    if (!state.redoStack.length) return;
+    state.undoStack.push(anCtx.getImageData(0, 0, anCanvas.width, anCanvas.height));
+    anCtx.putImageData(state.redoStack.pop(), 0, 0);
+  }
+
+  function drawArrow(ctx, x1, y1, x2, y2) {
+    const headLen = Math.max(15, ctx.lineWidth * 3);
+    const angle = Math.atan2(y2 - y1, x2 - x1);
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - headLen * Math.cos(angle - Math.PI/6), y2 - headLen * Math.sin(angle - Math.PI/6));
+    ctx.lineTo(x2 - headLen * Math.cos(angle + Math.PI/6), y2 - headLen * Math.sin(angle + Math.PI/6));
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function applyBlur(x1, y1, x2, y2) {
+    const x = Math.min(x1, x2), y = Math.min(y1, y2);
+    const w = Math.abs(x2 - x1), h = Math.abs(y2 - y1);
+    if (w < 4 || h < 4) return;
+    const imgData = scCtx.getImageData(x, y, w, h);
+    const pxSize = Math.max(8, Math.floor(Math.min(w, h) / 10));
+    const tmp = document.createElement('canvas');
+    tmp.width = w; tmp.height = h;
+    tmp.getContext('2d').putImageData(imgData, 0, 0);
+    const blurC = document.createElement('canvas');
+    blurC.width = Math.max(1, Math.floor(w / pxSize));
+    blurC.height = Math.max(1, Math.floor(h / pxSize));
+    blurC.getContext('2d').drawImage(tmp, 0, 0, blurC.width, blurC.height);
+    anCtx.save();
+    anCtx.imageSmoothingEnabled = false;
+    anCtx.drawImage(blurC, x, y, w, h);
+    anCtx.restore();
+  }
+
+  // ─── Canvas events ───────────────────────────────────────
+  anCanvas.addEventListener('mousedown', e => {
+    if (state.tool === 'pointer') return;
+    const pos = getPos(e);
+    state.drawing = true;
+    state.sx = pos.x; state.sy = pos.y;
+    saveUndo();
+
+    anCtx.strokeStyle = state.color;
+    anCtx.fillStyle = state.color;
+    anCtx.lineWidth = state.strokeSize;
+    anCtx.lineCap = 'round';
+    anCtx.lineJoin = 'round';
+
+    if (state.tool === 'pen') {
+      anCtx.beginPath();
+      anCtx.moveTo(pos.x, pos.y);
+    } else if (state.tool === 'highlight') {
+      anCtx.beginPath();
+      anCtx.globalAlpha = 0.4;
+      anCtx.moveTo(pos.x, pos.y);
+    } else if (state.tool === 'text') {
+      showTextAt(pos.x, pos.y);
+      state.drawing = false;
+    }
+  });
+
+  anCanvas.addEventListener('mousemove', e => {
+    if (!state.drawing) return;
+    const pos = getPos(e);
+    if (state.tool === 'pen' || state.tool === 'highlight') {
+      anCtx.lineTo(pos.x, pos.y);
+      anCtx.stroke();
+    }
+  });
+
+  anCanvas.addEventListener('mouseup', e => {
+    if (!state.drawing) return;
+    const pos = getPos(e);
+    state.drawing = false;
+    anCtx.globalAlpha = 1;
+
+    anCtx.strokeStyle = state.color;
+    anCtx.fillStyle = state.color;
+    anCtx.lineWidth = state.strokeSize;
+    anCtx.lineCap = 'round';
+
+    if (state.tool === 'arrow') drawArrow(anCtx, state.sx, state.sy, pos.x, pos.y);
+    else if (state.tool === 'rect') anCtx.strokeRect(state.sx, state.sy, pos.x - state.sx, pos.y - state.sy);
+    else if (state.tool === 'blur') applyBlur(state.sx, state.sy, pos.x, pos.y);
+  });
+
+  anCanvas.addEventListener('mouseleave', () => {
+    if (state.drawing) { state.drawing = false; anCtx.globalAlpha = 1; }
+  });
+
+  // ─── Text tool ───────────────────────────────────────────
+  function showTextAt(x, y) {
+    state.textPos = { x, y };
+    const overlay = $('text-overlay');
+    const rect = anCanvas.getBoundingClientRect();
+    const scaleX = rect.width / anCanvas.width;
+    const scaleY = rect.height / anCanvas.height;
+    const wrapRect = $('canvas-wrapper').getBoundingClientRect();
+    overlay.style.left = (x * scaleX) + 'px';
+    overlay.style.top = (y * scaleY) + 'px';
+    overlay.style.display = 'block';
+    const inp = $('text-input');
+    inp.value = '';
+    inp.style.fontSize = Math.max(14, state.strokeSize * 3) + 'px';
+    inp.focus();
+  }
+
+  function commitText() {
+    const overlay = $('text-overlay');
+    const text = $('text-input').value.trim();
+    if (text && state.textPos) {
+      saveUndo();
+      const fontSize = Math.max(14, state.strokeSize * 3);
+      anCtx.font = `${fontSize}px 'Segoe UI', sans-serif`;
+      anCtx.fillStyle = state.color;
+      anCtx.strokeStyle = 'rgba(0,0,0,0.6)';
+      anCtx.lineWidth = 2;
+      text.split('\n').forEach((line, i) => {
+        const ly = state.textPos.y + (i + 1) * fontSize;
+        anCtx.strokeText(line, state.textPos.x, ly);
+        anCtx.fillText(line, state.textPos.x, ly);
+      });
+    }
+    overlay.style.display = 'none';
+    state.textPos = null;
+  }
+
+  $('text-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitText(); }
+    if (e.key === 'Escape') { $('text-overlay').style.display = 'none'; state.textPos = null; }
+  });
+  $('text-input').addEventListener('blur', commitText);
+
+  // ─── Merge canvases & copy ────────────────────────────────
+  function getMerged() {
+    const c = document.createElement('canvas');
+    c.width = scCanvas.width; c.height = scCanvas.height;
+    const ctx = c.getContext('2d');
+    ctx.drawImage(scCanvas, 0, 0);
+    ctx.drawImage(anCanvas, 0, 0);
+    return c;
+  }
+
+  async function copyToClipboard() {
+    const dataUrl = getMerged().toDataURL('image/png');
+    try {
+      const blob = await fetch(dataUrl).then(r => r.blob());
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      addHistory(dataUrl);
+      $('copy-success').classList.add('show');
+      setTimeout(() => $('copy-success').classList.remove('show'), 5000);
+    } catch {
+      // Fallback
+      try {
+        await navigator.clipboard.writeText(dataUrl);
+        showToast('テキスト形式でコピーしました（一部環境）');
+      } catch {
+        showToast('⚠️ クリップボードへのコピーに失敗しました。保存をお試しください。');
+      }
+    }
+  }
+
+  function downloadImage() {
+    const dataUrl = getMerged().toDataURL('image/png');
+    addHistory(dataUrl);
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = `screenshot_${new Date().toISOString().slice(0,19).replace(/[:T]/g, '-')}.png`;
+    a.click();
+  }
+
+  // ─── Home screen capture actions ─────────────────────────
+  $('card-tab').addEventListener('click', async () => {
+    const dataUrl = await captureScreen();
+    if (dataUrl) openEditor(dataUrl);
+  });
+
+  $('card-area').addEventListener('click', async () => {
+    const fullDataUrl = await captureScreen();
+    if (!fullDataUrl) return;
+    const croppedDataUrl = await startAreaSelection(fullDataUrl);
+    if (croppedDataUrl) openEditor(croppedDataUrl);
+  });
+
+  $('card-screen').addEventListener('click', async () => {
+    const dataUrl = await captureScreen();
+    if (dataUrl) openEditor(dataUrl);
+  });
+
+  // ─── Editor actions ──────────────────────────────────────
+  $('btn-copy-clip').addEventListener('click', copyToClipboard);
+  $('btn-download').addEventListener('click', downloadImage);
+  $('btn-undo').addEventListener('click', undo);
+  $('btn-redo').addEventListener('click', redo);
+  $('btn-clear-annotations').addEventListener('click', () => {
+    saveUndo();
+    anCtx.clearRect(0, 0, anCanvas.width, anCanvas.height);
+  });
+  $('btn-home').addEventListener('click', () => { showScreen('home'); renderAllHistory(); });
+
+  $('btn-recapture-tab').addEventListener('click', async () => {
+    const dataUrl = await captureScreen();
+    if (dataUrl) openEditor(dataUrl);
+  });
+  $('btn-recapture-area').addEventListener('click', async () => {
+    const full = await captureScreen();
+    if (!full) return;
+    const cropped = await startAreaSelection(full);
+    if (cropped) openEditor(cropped);
+  });
+
+  // Tool selection
+  document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tool-btn[data-tool]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.tool = btn.dataset.tool;
+      anCanvas.style.cursor = state.tool === 'pointer' ? 'default' : 'crosshair';
+    });
+  });
+  $('color-picker').addEventListener('input', e => state.color = e.target.value);
+  $('stroke-size').addEventListener('change', e => state.strokeSize = +e.target.value);
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', e => {
+    if (e.ctrlKey && e.key === 'z') undo();
+    if (e.ctrlKey && e.key === 'y') redo();
+  });
+
+  // ─── Init ────────────────────────────────────────────────
+  renderAllHistory();
+  </script>
+</body>
+</html>
