@@ -1,0 +1,203 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>スクリーンショットツール</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI','Meiryo',sans-serif;background:#111;color:#eee;height:100vh;display:flex;flex-direction:column}
+#top{background:#1a1a2e;padding:8px 12px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;border-bottom:1px solid #333}
+button{padding:6px 12px;border:1px solid #444;border-radius:6px;background:#2a2a3e;color:#eee;cursor:pointer;font-size:13px;transition:background .15s}
+button:hover{background:#3a3a5e}
+button.active{background:#4361ee;border-color:#4361ee}
+#capBtn{background:#4361ee;border-color:#4361ee;font-weight:bold}
+#copyBtn{background:#2d9e60;border-color:#2d9e60}
+#copyBtn:hover{background:#238a52}
+input[type=color]{width:32px;height:32px;border:1px solid #444;border-radius:4px;background:#2a2a3e;cursor:pointer;padding:2px}
+select{background:#2a2a3e;border:1px solid #444;color:#eee;padding:5px 8px;border-radius:6px;font-size:13px}
+#sep{width:1px;height:28px;background:#444;margin:0 4px}
+#main{flex:1;overflow:auto;background:#080812;position:relative;display:flex;align-items:flex-start;justify-content:flex-start;padding:16px}
+#wrap{position:relative;display:inline-block}
+canvas{display:block}
+#ac{position:absolute;top:0;left:0;cursor:crosshair}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(60px);background:#1a3a2a;border:1px solid #2d6b42;color:#4ade80;padding:10px 20px;border-radius:8px;font-size:14px;transition:transform .3s;z-index:999}
+#toast.show{transform:translateX(-50%) translateY(0)}
+#hint{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-size:20px;text-shadow:0 2px 8px #000;text-align:center;pointer-events:none;line-height:2}
+#overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:100;display:none;cursor:crosshair}
+#sel{position:absolute;border:2px solid #4361ee;background:rgba(67,97,238,.15);display:none}
+#textbox{position:absolute;display:none;z-index:10}
+#textbox textarea{background:rgba(255,255,0,.9);border:2px solid red;border-radius:3px;padding:4px;font-size:16px;color:#000;min-width:120px;min-height:32px;resize:both;font-family:sans-serif}
+</style></head>
+<body>
+<div id="top">
+  <button id="capBtn" onclick="capture()">📷 撮影開始</button>
+  <div id="sep"></div>
+  <button class="tool active" data-t="pen" title="ペン">✏️</button>
+  <button class="tool" data-t="arrow" title="矢印">➡️</button>
+  <button class="tool" data-t="rect" title="四角">⬜</button>
+  <button class="tool" data-t="text" title="テキスト">T</button>
+  <button class="tool" data-t="blur" title="ぼかし">🔲</button>
+  <input type="color" id="col" value="#FF0000" title="色">
+  <select id="sz"><option value="2">細</option><option value="4" selected>普通</option><option value="8">太</option><option value="16">極太</option></select>
+  <div id="sep"></div>
+  <button onclick="undo()" title="元に戻す Ctrl+Z">↩️</button>
+  <button onclick="redo()" title="やり直し Ctrl+Y">↪️</button>
+  <div id="sep"></div>
+  <button id="copyBtn" onclick="copyClip()" style="display:none">📋 コピー（Teams/Outlookに貼付）</button>
+  <button onclick="dl()" style="display:none" id="dlBtn">💾 保存</button>
+</div>
+<div id="main">
+  <div id="wrap">
+    <canvas id="sc"></canvas>
+    <canvas id="ac"></canvas>
+    <div id="textbox"><textarea id="ti" placeholder="テキスト入力 Enterで確定"></textarea></div>
+  </div>
+  <div id="hint">📷 上の「撮影開始」をクリックしてください<br><small style="font-size:14px;opacity:.7">画面共有ダイアログで「このタブ」または「画面全体」を選択</small></div>
+</div>
+<div id="overlay"><div id="sel"></div></div>
+<div id="toast" id="toast"></div>
+
+<script>
+const sc=document.getElementById('sc'),ac=document.getElementById('ac');
+const sx=sc.getContext('2d'),ax=ac.getContext('2d');
+let tool='pen',color='#FF0000',size=4,drawing=false,ox=0,oy=0,undo_=[],redo_=[];
+
+// Tool select
+document.querySelectorAll('.tool').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.tool').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  tool=b.dataset.t;
+  ac.style.cursor=tool==='pen'||tool==='arrow'||tool==='rect'||tool==='blur'||tool==='text'?'crosshair':'default';
+}));
+document.getElementById('col').addEventListener('input',e=>color=e.target.value);
+document.getElementById('sz').addEventListener('change',e=>size=+e.target.value);
+
+// Capture
+async function capture(){
+  try{
+    const stream=await navigator.mediaDevices.getDisplayMedia({video:{cursor:'always'},preferCurrentTab:true});
+    const track=stream.getVideoTracks()[0];
+    const s=track.getSettings();
+    const w=s.width||window.screen.width,h=s.height||window.screen.height;
+    const v=document.createElement('video');
+    v.srcObject=stream;
+    await new Promise(r=>{v.onloadedmetadata=r});
+    v.play();
+    await new Promise(r=>setTimeout(r,150));
+    sc.width=w;sc.height=h;ac.width=w;ac.height=h;
+    sc.style.width=w+'px';sc.style.height=h+'px';
+    ac.style.width=w+'px';ac.style.height=h+'px';
+    document.getElementById('wrap').style.width=w+'px';
+    document.getElementById('wrap').style.height=h+'px';
+    sx.drawImage(v,0,0,w,h);
+    ax.clearRect(0,0,w,h);
+    stream.getTracks().forEach(t=>t.stop());
+    document.getElementById('hint').style.display='none';
+    document.getElementById('copyBtn').style.display='';
+    document.getElementById('dlBtn').style.display='';
+    undo_=[];redo_=[];
+  }catch(e){if(e.name!=='AbortError')toast('撮影がキャンセルされました')}
+}
+
+// Undo/Redo
+function saveU(){undo_.push(ax.getImageData(0,0,ac.width,ac.height));redo_=[];}
+function undo(){if(!undo_.length)return;redo_.push(ax.getImageData(0,0,ac.width,ac.height));ax.putImageData(undo_.pop(),0,0);}
+function redo(){if(!redo_.length)return;undo_.push(ax.getImageData(0,0,ac.width,ac.height));ax.putImageData(redo_.pop(),0,0);}
+
+// Canvas pos
+function pos(e){const r=ac.getBoundingClientRect();return{x:(e.clientX-r.left)*(ac.width/r.width),y:(e.clientY-r.top)*(ac.height/r.height)};}
+
+// Draw
+ac.addEventListener('mousedown',e=>{
+  if(!sc.width)return;
+  const p=pos(e);ox=p.x;oy=p.y;drawing=true;saveU();
+  ax.strokeStyle=color;ax.fillStyle=color;ax.lineWidth=size;ax.lineCap='round';ax.lineJoin='round';
+  if(tool==='pen'){ax.beginPath();ax.moveTo(p.x,p.y);}
+  else if(tool==='text'){showText(p.x,p.y);drawing=false;}
+});
+ac.addEventListener('mousemove',e=>{
+  if(!drawing)return;
+  const p=pos(e);
+  if(tool==='pen'){ax.lineTo(p.x,p.y);ax.stroke();}
+});
+ac.addEventListener('mouseup',e=>{
+  if(!drawing)return;drawing=false;
+  const p=pos(e);
+  ax.strokeStyle=color;ax.fillStyle=color;ax.lineWidth=size;ax.lineCap='round';
+  if(tool==='arrow')arrow(ox,oy,p.x,p.y);
+  else if(tool==='rect')ax.strokeRect(ox,oy,p.x-ox,p.y-oy);
+  else if(tool==='blur')blur(ox,oy,p.x,p.y);
+});
+ac.addEventListener('mouseleave',()=>{drawing=false;});
+
+function arrow(x1,y1,x2,y2){
+  const h=Math.max(15,size*3),a=Math.atan2(y2-y1,x2-x1);
+  ax.beginPath();ax.moveTo(x1,y1);ax.lineTo(x2,y2);ax.stroke();
+  ax.beginPath();ax.moveTo(x2,y2);
+  ax.lineTo(x2-h*Math.cos(a-Math.PI/6),y2-h*Math.sin(a-Math.PI/6));
+  ax.lineTo(x2-h*Math.cos(a+Math.PI/6),y2-h*Math.sin(a+Math.PI/6));
+  ax.closePath();ax.fill();
+}
+function blur(x1,y1,x2,y2){
+  const x=Math.min(x1,x2),y=Math.min(y1,y2),w=Math.abs(x2-x1),h=Math.abs(y2-y1);
+  if(w<4||h<4)return;
+  const d=sx.getImageData(x,y,w,h),p=Math.max(8,Math.floor(Math.min(w,h)/8));
+  const t=document.createElement('canvas');t.width=w;t.height=h;t.getContext('2d').putImageData(d,0,0);
+  const b=document.createElement('canvas');b.width=Math.max(1,Math.floor(w/p));b.height=Math.max(1,Math.floor(h/p));
+  b.getContext('2d').drawImage(t,0,0,b.width,b.height);
+  ax.save();ax.imageSmoothingEnabled=false;ax.drawImage(b,x,y,w,h);ax.restore();
+}
+
+// Text
+let tpos=null;
+function showText(x,y){
+  tpos={x,y};
+  const tb=document.getElementById('textbox'),ti=document.getElementById('ti');
+  const r=ac.getBoundingClientRect(),sx2=r.width/ac.width,sy2=r.height/ac.height;
+  const wr=document.getElementById('wrap').getBoundingClientRect();
+  tb.style.left=(x*sx2)+'px';tb.style.top=(y*sy2)+'px';tb.style.display='block';
+  ti.style.fontSize=Math.max(14,size*3)+'px';ti.value='';ti.focus();
+}
+function commitText(){
+  const ti=document.getElementById('ti'),txt=ti.value.trim();
+  if(txt&&tpos){
+    saveU();
+    const fs=Math.max(14,size*3);
+    ax.font=fs+'px sans-serif';ax.fillStyle=color;ax.strokeStyle='rgba(0,0,0,.6)';ax.lineWidth=2;
+    txt.split('\n').forEach((l,i)=>{const ly=tpos.y+(i+1)*fs;ax.strokeText(l,tpos.x,ly);ax.fillText(l,tpos.x,ly);});
+  }
+  document.getElementById('textbox').style.display='none';tpos=null;
+}
+document.getElementById('ti').addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();commitText();}
+  if(e.key==='Escape'){document.getElementById('textbox').style.display='none';tpos=null;}
+});
+document.getElementById('ti').addEventListener('blur',commitText);
+
+// Merge & copy
+function merged(){
+  const c=document.createElement('canvas');c.width=sc.width;c.height=sc.height;
+  const ctx=c.getContext('2d');ctx.drawImage(sc,0,0);ctx.drawImage(ac,0,0);return c;
+}
+async function copyClip(){
+  if(!sc.width){toast('先に撮影してください');return;}
+  const url=merged().toDataURL('image/png');
+  try{
+    const blob=await fetch(url).then(r=>r.blob());
+    await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);
+    toast('✅ コピーしました！Teams・Outlookに Ctrl+V で貼り付けできます');
+  }catch{toast('⚠️ コピー失敗。保存してお試しください');}
+}
+function dl(){
+  if(!sc.width)return;
+  const a=document.createElement('a');
+  a.href=merged().toDataURL('image/png');
+  a.download='screenshot_'+new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')+'.png';
+  a.click();
+}
+function toast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),4000);
+}
+document.addEventListener('keydown',e=>{
+  if(e.ctrlKey&&e.key==='z')undo();
+  if(e.ctrlKey&&e.key==='y')redo();
+});
+</script>
+</body></html>
