@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>スクリーンショットツール</title>
+<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>Screenshot Tool</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Segoe UI','Meiryo',sans-serif;background:#111;color:#eee;height:100vh;display:flex;flex-direction:column}
@@ -11,7 +11,7 @@ button.active{background:#4361ee;border-color:#4361ee}
 #copyBtn:hover{background:#238a52}
 input[type=color]{width:32px;height:32px;border:1px solid #444;border-radius:4px;background:#2a2a3e;cursor:pointer;padding:2px}
 select{background:#2a2a3e;border:1px solid #444;color:#eee;padding:5px 8px;border-radius:6px;font-size:13px}
-#sep{width:1px;height:28px;background:#444;margin:0 4px}
+.sep{width:1px;height:28px;background:#444;margin:0 4px}
 #main{flex:1;overflow:auto;background:#080812;position:relative;display:flex;align-items:flex-start;justify-content:flex-start;padding:16px}
 #wrap{position:relative;display:inline-block}
 canvas{display:block}
@@ -19,56 +19,50 @@ canvas{display:block}
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(60px);background:#1a3a2a;border:1px solid #2d6b42;color:#4ade80;padding:10px 20px;border-radius:8px;font-size:14px;transition:transform .3s;z-index:999}
 #toast.show{transform:translateX(-50%) translateY(0)}
 #hint{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-size:20px;text-shadow:0 2px 8px #000;text-align:center;pointer-events:none;line-height:2}
-#overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:100;display:none;cursor:crosshair}
-#sel{position:absolute;border:2px solid #4361ee;background:rgba(67,97,238,.15);display:none}
 #textbox{position:absolute;display:none;z-index:10}
 #textbox textarea{background:rgba(255,255,0,.9);border:2px solid red;border-radius:3px;padding:4px;font-size:16px;color:#000;min-width:120px;min-height:32px;resize:both;font-family:sans-serif}
 </style></head>
 <body>
 <div id="top">
-  <button id="capBtn" onclick="capture()">📷 撮影開始</button>
-  <div id="sep"></div>
-  <button class="tool active" data-t="pen" title="ペン">✏️</button>
-  <button class="tool" data-t="arrow" title="矢印">➡️</button>
-  <button class="tool" data-t="rect" title="四角">⬜</button>
-  <button class="tool" data-t="text" title="テキスト">T</button>
-  <button class="tool" data-t="blur" title="ぼかし">🔲</button>
-  <input type="color" id="col" value="#FF0000" title="色">
-  <select id="sz"><option value="2">細</option><option value="4" selected>普通</option><option value="8">太</option><option value="16">極太</option></select>
-  <div id="sep"></div>
-  <button onclick="undo()" title="元に戻す Ctrl+Z">↩️</button>
-  <button onclick="redo()" title="やり直し Ctrl+Y">↪️</button>
-  <div id="sep"></div>
-  <button id="copyBtn" onclick="copyClip()" style="display:none">📋 コピー（Teams/Outlookに貼付）</button>
-  <button onclick="dl()" style="display:none" id="dlBtn">💾 保存</button>
+  <button id="capBtn" onclick="capture()">[ Capture ]</button>
+  <div class="sep"></div>
+  <button class="tool active" data-t="pen">Pen</button>
+  <button class="tool" data-t="arrow">Arrow</button>
+  <button class="tool" data-t="rect">Rect</button>
+  <button class="tool" data-t="text">Text</button>
+  <button class="tool" data-t="blur">Blur</button>
+  <input type="color" id="col" value="#FF0000" title="Color">
+  <select id="sz"><option value="2">Thin</option><option value="4" selected>Normal</option><option value="8">Thick</option><option value="16">Heavy</option></select>
+  <div class="sep"></div>
+  <button onclick="undo()" title="Undo Ctrl+Z">Undo</button>
+  <button onclick="redo()" title="Redo Ctrl+Y">Redo</button>
+  <div class="sep"></div>
+  <button id="copyBtn" onclick="copyClip()" style="display:none">[ Copy to Clipboard ]</button>
+  <button onclick="dl()" style="display:none" id="dlBtn">[ Save PNG ]</button>
 </div>
 <div id="main">
   <div id="wrap">
     <canvas id="sc"></canvas>
     <canvas id="ac"></canvas>
-    <div id="textbox"><textarea id="ti" placeholder="テキスト入力 Enterで確定"></textarea></div>
+    <div id="textbox"><textarea id="ti" placeholder="Type here, Enter to confirm"></textarea></div>
   </div>
-  <div id="hint">📷 上の「撮影開始」をクリックしてください<br><small style="font-size:14px;opacity:.7">画面共有ダイアログで「このタブ」または「画面全体」を選択</small></div>
+  <div id="hint">Click [ Capture ] to start<br><small style="font-size:14px;opacity:.7">Select "This Tab" or "Entire Screen" in the dialog</small></div>
 </div>
-<div id="overlay"><div id="sel"></div></div>
-<div id="toast" id="toast"></div>
+<div id="toast"></div>
 
 <script>
 const sc=document.getElementById('sc'),ac=document.getElementById('ac');
 const sx=sc.getContext('2d'),ax=ac.getContext('2d');
 let tool='pen',color='#FF0000',size=4,drawing=false,ox=0,oy=0,undo_=[],redo_=[];
 
-// Tool select
 document.querySelectorAll('.tool').forEach(b=>b.addEventListener('click',()=>{
   document.querySelectorAll('.tool').forEach(x=>x.classList.remove('active'));
   b.classList.add('active');
   tool=b.dataset.t;
-  ac.style.cursor=tool==='pen'||tool==='arrow'||tool==='rect'||tool==='blur'||tool==='text'?'crosshair':'default';
 }));
 document.getElementById('col').addEventListener('input',e=>color=e.target.value);
 document.getElementById('sz').addEventListener('change',e=>size=+e.target.value);
 
-// Capture
 async function capture(){
   try{
     const stream=await navigator.mediaDevices.getDisplayMedia({video:{cursor:'always'},preferCurrentTab:true});
@@ -92,18 +86,15 @@ async function capture(){
     document.getElementById('copyBtn').style.display='';
     document.getElementById('dlBtn').style.display='';
     undo_=[];redo_=[];
-  }catch(e){if(e.name!=='AbortError')toast('撮影がキャンセルされました')}
+  }catch(e){if(e.name!=='AbortError')toast('Capture cancelled');}
 }
 
-// Undo/Redo
 function saveU(){undo_.push(ax.getImageData(0,0,ac.width,ac.height));redo_=[];}
 function undo(){if(!undo_.length)return;redo_.push(ax.getImageData(0,0,ac.width,ac.height));ax.putImageData(undo_.pop(),0,0);}
 function redo(){if(!redo_.length)return;undo_.push(ax.getImageData(0,0,ac.width,ac.height));ax.putImageData(redo_.pop(),0,0);}
 
-// Canvas pos
 function pos(e){const r=ac.getBoundingClientRect();return{x:(e.clientX-r.left)*(ac.width/r.width),y:(e.clientY-r.top)*(ac.height/r.height)};}
 
-// Draw
 ac.addEventListener('mousedown',e=>{
   if(!sc.width)return;
   const p=pos(e);ox=p.x;oy=p.y;drawing=true;saveU();
@@ -144,14 +135,12 @@ function blur(x1,y1,x2,y2){
   ax.save();ax.imageSmoothingEnabled=false;ax.drawImage(b,x,y,w,h);ax.restore();
 }
 
-// Text
 let tpos=null;
 function showText(x,y){
   tpos={x,y};
   const tb=document.getElementById('textbox'),ti=document.getElementById('ti');
-  const r=ac.getBoundingClientRect(),sx2=r.width/ac.width,sy2=r.height/ac.height;
-  const wr=document.getElementById('wrap').getBoundingClientRect();
-  tb.style.left=(x*sx2)+'px';tb.style.top=(y*sy2)+'px';tb.style.display='block';
+  const r=ac.getBoundingClientRect();
+  tb.style.left=(x*(r.width/ac.width))+'px';tb.style.top=(y*(r.height/ac.height))+'px';tb.style.display='block';
   ti.style.fontSize=Math.max(14,size*3)+'px';ti.value='';ti.focus();
 }
 function commitText(){
@@ -170,19 +159,17 @@ document.getElementById('ti').addEventListener('keydown',e=>{
 });
 document.getElementById('ti').addEventListener('blur',commitText);
 
-// Merge & copy
 function merged(){
   const c=document.createElement('canvas');c.width=sc.width;c.height=sc.height;
   const ctx=c.getContext('2d');ctx.drawImage(sc,0,0);ctx.drawImage(ac,0,0);return c;
 }
 async function copyClip(){
-  if(!sc.width){toast('先に撮影してください');return;}
-  const url=merged().toDataURL('image/png');
+  if(!sc.width){toast('Capture first');return;}
   try{
-    const blob=await fetch(url).then(r=>r.blob());
+    const blob=await fetch(merged().toDataURL('image/png')).then(r=>r.blob());
     await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);
-    toast('✅ コピーしました！Teams・Outlookに Ctrl+V で貼り付けできます');
-  }catch{toast('⚠️ コピー失敗。保存してお試しください');}
+    toast('Copied! Paste with Ctrl+V in Teams / Outlook');
+  }catch{toast('Copy failed. Try Save PNG instead.');}
 }
 function dl(){
   if(!sc.width)return;
