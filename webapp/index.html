@@ -645,12 +645,15 @@
   }
 
   // ─── Screen Capture API ──────────────────────────────────
-  async function captureScreen() {
+  async function captureAny() {
+    // 別タブ・別ウィンドウ・画面全体を選択できる（preferCurrentTab なし）
+    return captureScreen(false);
+  }
+  async function captureScreen(preferCurrent = true) {
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: { cursor: 'always' },
-        preferCurrentTab: true,
-      });
+      const opts = { video: { cursor: 'always' } };
+      if (preferCurrent) opts.preferCurrentTab = true;
+      const stream = await navigator.mediaDevices.getDisplayMedia(opts);
       const track = stream.getVideoTracks()[0];
       const settings = track.getSettings();
       const w = settings.width || window.screen.width;
@@ -991,14 +994,14 @@
   });
 
   $('card-area').addEventListener('click', async () => {
-    const fullDataUrl = await captureScreen();
+    const fullDataUrl = await captureAny();
     if (!fullDataUrl) return;
     const croppedDataUrl = await startAreaSelection(fullDataUrl);
     if (croppedDataUrl) openEditor(croppedDataUrl);
   });
 
   $('card-screen').addEventListener('click', async () => {
-    const dataUrl = await captureScreen();
+    const dataUrl = await captureAny();
     if (dataUrl) openEditor(dataUrl);
   });
 
@@ -1014,11 +1017,11 @@
   $('btn-home').addEventListener('click', () => { showScreen('home'); renderAllHistory(); });
 
   $('btn-recapture-tab').addEventListener('click', async () => {
-    const dataUrl = await captureScreen();
+    const dataUrl = await captureAny();
     if (dataUrl) openEditor(dataUrl);
   });
   $('btn-recapture-area').addEventListener('click', async () => {
-    const full = await captureScreen();
+    const full = await captureAny();
     if (!full) return;
     const cropped = await startAreaSelection(full);
     if (cropped) openEditor(cropped);
